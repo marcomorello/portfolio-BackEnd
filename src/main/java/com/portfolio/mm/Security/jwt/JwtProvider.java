@@ -6,20 +6,25 @@ package com.portfolio.mm.Security.jwt;
 
 import com.portfolio.mm.Security.Entity.UsuarioPrincipal;
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.MalformedJwtException;
-import io.jsonwebtoken.SignatureException;
 import io.jsonwebtoken.UnsupportedJwtException;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 /**
  *
- * @author marco
+ * @author Sari
  */
 
 
@@ -27,9 +32,13 @@ import org.springframework.stereotype.Component;
 public class JwtProvider {
     private final static Logger logger = LoggerFactory.getLogger(JwtProvider.class);
     
-    @Value("${jwt.secret}")
+    @Value("${Jwt.secret}")
     private Key secret;
-    @Value("${jwt.expiration}")
+    private Key getSigningKey() {
+    	  byte[] keyBytes = Decoders.BASE64.decode(this.secret.toString());
+    	  return Keys.hmacShaKeyFor(keyBytes);
+    	}
+    @Value("${Jwt.expiration}")
     private int expiration;
     
     public String generateToken(Authentication authentication){
@@ -37,17 +46,17 @@ public class JwtProvider {
         return Jwts.builder().setSubject(usuarioPrincipal.getUsername())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(new Date().getTime()+expiration*1000))
-                .signWith(secret)
+                .signWith(secret) //cambiar secret por getSigningKey()
                 .compact();
     }
     
     public String getNombreUSuarioFromToken(String token){
-        return Jwts.parser().setSigningKey(secret).parseClaimsJws(token).getBody().getSubject();
+    	return Jwts.parserBuilder().setSigningKey(secret).build().parseClaimsJws(token).getBody().getSubject();
     }
     
     public boolean validateToken(String token){
         try{
-            Jwts.parser().setSigningKey(secret).parseClaimsJws(token);
+            ((JwtParser) Jwts.parserBuilder().setSigningKey(secret)).parseClaimsJws(token);
             return true;
         }catch (MalformedJwtException e){
             logger.error("Token mal formado");
@@ -57,7 +66,7 @@ public class JwtProvider {
             logger.error("Token expirado");
         }catch (IllegalArgumentException e){
             logger.error("Token vacio");
-        }catch (SignatureException e){
+        }catch (SecurityException e){
             logger.error("Firma no válida");
         }
         return false;
