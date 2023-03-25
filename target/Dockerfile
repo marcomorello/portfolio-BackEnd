@@ -2,4 +2,3 @@ FROM amazoncorretto:17-alpine-jdk
 MAINTAINER Marco
 COPY target/mm-0.0.1-SNAPSHOT.jar mm-app.jar
 ENTRYPOINT ["java", "-jar", "/mm-app.jar"]
-EXPOSE 8080 en el Dockerfile
